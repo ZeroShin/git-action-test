@@ -1,19 +1,26 @@
-name: 'OCA GitHub Actions Report'
+name: 'OCA GitHub Actions close issue'
 
-on:
-  issues:
-    types: [opened]
+on: 
+  issue_comment:
+    types: [created]
+
 
 jobs:
-  comment:
+  closeIssue:  
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/github-script@v6
+      - name: Check if comment contains /close
+        id: check_comment
+        uses: actions/github-script@v6
         with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '👋 Thanks for reporting!'
-            })
+          scripts: |
+          const commentBody = context.payload.comment.body;
+          core.setOutput('shouldClose', commentBody.includes('/close'));
+
+      - name: Close Issue
+        if: steps.check_comment.outputs.shouldClose == 'true'
+        uses: peter-evans/close-issue@v1
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          comment: true
