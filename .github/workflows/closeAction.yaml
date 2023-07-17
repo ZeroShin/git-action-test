@@ -1,26 +1,31 @@
-name: 'OCA GitHub Actions close issue'
+name: OCA Close Issue on Comment
 
-on: 
+on:
   issue_comment:
     types: [created]
 
-
 jobs:
-  closeIssue:  
+  closeIssue:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check if comment contains /close
-        id: check_comment
-        uses: actions/github-script@v6
-        with:
-          scripts: |
+    - name: Check if comment contains "/close"
+      id: check_comment
+      uses: actions/github-script@v5
+      with:
+        script: |
           const commentBody = context.payload.comment.body;
           core.setOutput('shouldClose', commentBody.includes('/close'));
 
-      - name: Close Issue
-        if: steps.check_comment.outputs.shouldClose == 'true'
-        uses: peter-evans/close-issue@v1
-        with:
-          issue-number: ${{ github.event.issue.number }}
-          comment: true
+    - name: Close Issue
+      if: steps.check_comment.outputs.shouldClose == 'true'
+      run: |
+        # Get the issue number from the event payload
+        ISSUE_NUMBER=$(jq -r '.issue.number' $GITHUB_EVENT_PATH)
+
+        # Close the issue using GitHub API
+        curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ github.repository }}/issues/${ISSUE_NUMBER}" \
+          -d '{"state": "closed"}'
